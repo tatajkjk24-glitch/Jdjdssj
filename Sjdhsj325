@@ -1,0 +1,539 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local Players = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+local VirtualUser = game:GetService("VirtualUser")
+local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+----------------------------------------------------
+-- [الواجهة الأساسية Fluent والحقوق]
+----------------------------------------------------
+local Window = Fluent:CreateWindow({
+    Title = "القوه الخفيه للتحالف",
+    SubTitle = "ايتاشي~سواد~اوبيتو",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+print("--------------------------------------")
+print("اسم السكربت: القوه الخفيه للتحالف")
+print("الحقوق: ايتاشي~سواد~اوبيتو")
+print("--------------------------------------")
+
+Fluent:Notify({
+    Title = "القوه الخفيه للتحالف",
+    Content = "تم تشغيل السكربت بنجاح | ايتاشي~سواد~اوبيتو",
+    Duration = 5
+})
+
+----------------------------------------------------
+-- [إنشاء الزر الجانبي لإظهار وإخفاء السكربت]
+----------------------------------------------------
+if PlayerGui:FindFirstChild("ToggleHubGui") then PlayerGui["ToggleHubGui"]:Destroy() end
+
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "ToggleHubGui"
+toggleGui.ResetOnSpawn = false
+toggleGui.Parent = PlayerGui
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 80, 0, 35)
+toggleButton.Position = UDim2.new(0, 10, 0.5, -17)
+toggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "إخفاء"
+toggleButton.TextSize = 14
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Parent = toggleGui
+
+Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 8)
+
+local toggleStroke = Instance.new("UIStroke", toggleButton)
+toggleStroke.Color = Color3.fromRGB(180, 30, 30)
+toggleStroke.Thickness = 1.5
+
+local isWindowVisible = true
+
+local function toggleUI()
+    isWindowVisible = not isWindowVisible
+    
+    if Window.Root then
+        Window.Root.Visible = isWindowVisible
+    end
+    
+    if isWindowVisible then
+        toggleButton.Text = "إخفاء"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    else
+        toggleButton.Text = "إظهار"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+    end
+end
+
+toggleButton.MouseButton1Click:Connect(toggleUI)
+
+----------------------------------------------------
+-- [شعار ترحيبي مع صورة مصغرة (Thumbnail Banner)]
+----------------------------------------------------
+if PlayerGui:FindFirstChild("WelcomeBannerGui") then PlayerGui["WelcomeBannerGui"]:Destroy() end
+
+local welcomeGui = Instance.new("ScreenGui")
+welcomeGui.Name = "WelcomeBannerGui"
+welcomeGui.ResetOnSpawn = false
+welcomeGui.Parent = PlayerGui
+
+local bannerFrame = Instance.new("Frame", welcomeGui)
+bannerFrame.Size = UDim2.new(0, 420, 0, 90)
+bannerFrame.Position = UDim2.new(0.5, -210, 0.12, 0)
+bannerFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+bannerFrame.BorderSizePixel = 0
+bannerFrame.ZIndex = 10
+
+Instance.new("UICorner", bannerFrame).CornerRadius = UDim.new(0, 10)
+
+local bannerStroke = Instance.new("UIStroke", bannerFrame)
+bannerStroke.Color = Color3.fromRGB(180, 30, 30)
+bannerStroke.Thickness = 2
+
+local thumbnailImage = Instance.new("ImageLabel", bannerFrame)
+thumbnailImage.Size = UDim2.new(0, 70, 0, 70)
+thumbnailImage.Position = UDim2.new(0, 10, 0.5, -35)
+thumbnailImage.BackgroundTransparency = 1
+thumbnailImage.Image = "rbxassetid://10863814897" 
+thumbnailImage.ZIndex = 11
+
+Instance.new("UICorner", thumbnailImage).CornerRadius = UDim.new(0, 8)
+
+local welcomeLabel = Instance.new("TextLabel", bannerFrame)
+welcomeLabel.Size = UDim2.new(1, -95, 1, 0)
+welcomeLabel.Position = UDim2.new(0, 85, 0, 0)
+welcomeLabel.BackgroundTransparency = 1
+welcomeLabel.Text = "نورت سكربت القوه الخفيه للتحالف"
+welcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+welcomeLabel.TextSize = 16
+welcomeLabel.Font = Enum.Font.GothamBold
+welcomeLabel.TextXAlignment = Enum.TextXAlignment.Left
+welcomeLabel.ZIndex = 11
+
+task.delay(3, function()
+    if welcomeGui and welcomeGui.Parent then
+        welcomeGui:Destroy()
+    end
+end)
+
+----------------------------------------------------
+-- [تتبع اللاعبين (Player Tracking System)]
+----------------------------------------------------
+local playerData = {}
+
+local function getPlayerTotalTime(userId)
+    local pInfo = playerData[userId]
+    if not pInfo then return 0 end
+    if pInfo.isOnline and pInfo.joinTime then
+        return pInfo.totalTime + (os.time() - pInfo.joinTime)
+    else
+        return pInfo.totalTime
+    end
+end
+
+local function trackPlayer(plr)
+    if not playerData[plr.UserId] then
+        playerData[plr.UserId] = {
+            totalTime = 0, joinTime = os.time(), isOnline = true, joins = 1, leaves = 0, name = plr.Name, displayName = plr.DisplayName
+        }
+    else
+        playerData[plr.UserId].joinTime = os.time()
+        playerData[plr.UserId].isOnline = true
+        playerData[plr.UserId].joins = playerData[plr.UserId].joins + 1
+    end
+end
+
+for _, plr in pairs(Players:GetPlayers()) do trackPlayer(plr) end
+Players.PlayerAdded:Connect(trackPlayer)
+
+----------------------------------------------------
+-- [مربع قارئ الفريمات والبنك والعداد]
+----------------------------------------------------
+if PlayerGui:FindFirstChild("blackBase") then PlayerGui["blackBase"]:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "blackBase"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+local statsFrame = Instance.new("Frame", screenGui)
+statsFrame.Name = "StatsDisplay"
+statsFrame.Size = UDim2.new(0, 160, 0, 70)
+statsFrame.Position = UDim2.new(0.015, 0, 0.015, 0)
+statsFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+statsFrame.BorderSizePixel = 0
+statsFrame.Active = true
+statsFrame.Draggable = true
+
+Instance.new("UICorner", statsFrame).CornerRadius = UDim.new(0, 8)
+
+local statsStroke = Instance.new("UIStroke", statsFrame)
+statsStroke.Color = Color3.fromRGB(180, 30, 30)
+statsStroke.Thickness = 1.5
+
+local statsLayout = Instance.new("UIListLayout", statsFrame)
+statsLayout.Padding = UDim.new(0, 2)
+statsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+statsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local fpsLabel = Instance.new("TextLabel", statsFrame)
+fpsLabel.Size = UDim2.new(1, -10, 0, 18)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+fpsLabel.Font = Enum.Font.GothamBold
+fpsLabel.TextSize = 12
+fpsLabel.Text = "الإطارات: 0"
+
+local pingLabel = Instance.new("TextLabel", statsFrame)
+pingLabel.Size = UDim2.new(1, -10, 0, 18)
+pingLabel.BackgroundTransparency = 1
+pingLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+pingLabel.Font = Enum.Font.GothamBold
+pingLabel.TextSize = 12
+pingLabel.Text = "البينج: 0 مللي ثانية"
+
+local timeLabel = Instance.new("TextLabel", statsFrame)
+timeLabel.Size = UDim2.new(1, -10, 0, 18)
+timeLabel.BackgroundTransparency = 1
+timeLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
+timeLabel.Font = Enum.Font.GothamBold
+timeLabel.TextSize = 12
+timeLabel.Text = "الوقت: 00:00:00"
+
+local frameCount = 0
+local lastCheck = os.clock()
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local currentTime = os.clock()
+    
+    if currentTime - lastCheck >= 1 then
+        local fps = math.floor(frameCount / (currentTime - lastCheck))
+        fpsLabel.Text = "الإطارات: " .. tostring(fps)
+        frameCount = 0
+        lastCheck = currentTime
+    end
+end)
+
+local scriptStartTime = os.time()
+
+task.spawn(function()
+    while task.wait(0.5) do
+        local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+        pingLabel.Text = "البينج: " .. tostring(ping) .. " ms"
+        
+        local elapsed = os.time() - scriptStartTime
+        local hours = math.floor(elapsed / 3600)
+        local mins = math.floor((elapsed % 3600) / 60)
+        local secs = elapsed % 60
+        
+        timeLabel.Text = string.format("الوقت: %02d:%02d:%02d", hours, mins, secs)
+    end
+end)
+
+----------------------------------------------------
+-- [تبويبات المكتبة المعدلة بدون مسمى DMR]
+----------------------------------------------------
+local Tabs = {
+    Main = Window:AddTab({ Title = "الرئيسية (الخمول)", Icon = "home" }),
+    Target = Window:AddTab({ Title = "استهداف اللاعبين", Icon = "crosshair" }),
+    Spam = Window:AddTab({ Title = "أدوات السبام", Icon = "message-square" }),
+    Visuals = Window:AddTab({ Title = "المرئيات", Icon = "eye" }),
+    Samla = Window:AddTab({ Title = "سكربتات صمله", Icon = "code" }),
+    Tracker = Window:AddTab({ Title = "متتبع اللاعبين", Icon = "list" }),
+    Settings = Window:AddTab({ Title = "الحقوق", Icon = "info" })
+}
+
+----------------------------------------------------
+-- [تبويب الرئيسية / AFK]
+----------------------------------------------------
+Tabs.Main:AddButton({
+    Title = "نظام جبرائيل V2 • إعادة الربط التلقائي",
+    Description = "حماية من انقطاع النت والطرد + إعادة دخول تلقائية",
+    Callback = function()
+        Fluent:Notify({ Title = "نظام جبرائيل", Content = "نظام الحماية يعمل بنجاح ✅", Duration = 4 })
+
+        local currentPlaceId = game.PlaceId
+        local currentJobId = game.JobId
+
+        task.spawn(function()
+            while true do
+                pcall(function()
+                    local errorPrompt = CoreGui.RobloxPromptGui.promptOverlay:FindFirstChild("ErrorPrompt")
+                    if errorPrompt then
+                        errorPrompt.Visible = false
+                        GuiService:ClearError()
+                    end
+                end)
+                task.wait(0.1)
+            end
+        end)
+
+        task.spawn(function()
+            while true do
+                pcall(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new(0,0))
+                end)
+                task.wait(10)
+            end
+        end)
+
+        task.spawn(function()
+            while true do
+                task.wait(3)
+                local isOnline = false
+                pcall(function()
+                    local response = HttpService:RequestAsync({
+                        Url = "https://httpbin.org/get",
+                        Method = "GET"
+                    })
+                    if response and response.Success then
+                        isOnline = true
+                    end
+                end)
+                
+                if isOnline then
+                    if #Players:GetPlayers() <= 1 then
+                        Fluent:Notify({ Title = "تنبيه الإنترنت", Content = "تم كشف النت! جاري إعادة إدخالك للسيرفر...", Duration = 5 })
+                        task.wait(1)
+                        pcall(function()
+                            if currentJobId and currentJobId ~= "" then
+                                TeleportService:TeleportToPlaceInstance(currentPlaceId, currentJobId, LocalPlayer)
+                            else
+                                TeleportService:Teleport(currentPlaceId, LocalPlayer)
+                            end
+                        end)
+                        break
+                    end
+                end
+            end
+        end)
+    end
+})
+
+Tabs.Main:AddButton({
+    Title = "مانع الخمول 1",
+    Description = "تشغيل سكربت مانع الخمول والطرد العام",
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-AntiAFK-v-AntiKick-V3-v-Kick-Attempt-Logger-27977"))() 
+        Fluent:Notify({ Title = "مانع الخمول 1", Content = "تم تفعيل مانع الخمول 1 بنجاح!", Duration = 3 })
+    end
+})
+
+local isLagReducerActive = false
+Tabs.Main:AddButton({
+    Title = "مانع الخمول 2 (مخفف اللاق)",
+    Description = "إزالة التأثيرات وتقليل الجودة لرفع الفريمات",
+    Callback = function()
+        if not isLagReducerActive then
+            isLagReducerActive = true
+            pcall(function()
+                Lighting.GlobalShadows = false
+                Lighting.FogEnd = 9e9
+                settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+                
+                for _, obj in pairs(game:GetDescendants()) do
+                    if obj:IsA("BasePart") then
+                        obj.Material = Enum.Material.SmoothPlastic
+                        obj.Reflectance = 0
+                    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                        obj:Destroy()
+                    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                        obj.Enabled = false
+                    end
+                end
+            end)
+            Fluent:Notify({ Title = "تسريع وتخفيف اللاق", Content = "تم تفعيل مخفف اللاق بنجاح!", Duration = 4 })
+        end
+    end
+})
+
+local itachiAntiAFKActive = false
+Tabs.Main:AddButton({
+    Title = "مانع الخمول 3 (القوه الخفيه)",
+    Description = "تفعيل مانع الطرد الخاص بك",
+    Callback = function()
+        if not itachiAntiAFKActive then
+            itachiAntiAFKActive = true
+            LocalPlayer.Idled:Connect(function()
+                if itachiAntiAFKActive then
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end
+            end)
+            Fluent:Notify({ Title = "مانع الخمول", Content = "تم تفعيل مانع الطرد بنجاح!", Duration = 4 })
+        end
+    end
+})
+
+----------------------------------------------------
+-- [مُحرك البانق والأنيميشن السريع جداً]
+----------------------------------------------------
+local targetDmrName = ""
+local bangThread = nil
+local isBanging = false
+local bangAnimationTrack = nil
+
+Tabs.Target:AddInput("TargetSearch", {
+    Title = "تحديد اللاعب المستهدف",
+    Default = "",
+    Placeholder = "اكتب اسم اللاعب...",
+    Numeric = false,
+    Finished = false,
+    Callback = function(Value)
+        targetDmrName = Value
+    end
+})
+
+local function getDmrPlayer()
+    if targetDmrName == "" then return nil end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and (plr.Name:lower():find(targetDmrName:lower()) or plr.DisplayName:lower():find(targetDmrName:lower())) then
+            return plr
+        end
+    end
+    return nil
+end
+
+local function stopBang()
+    isBanging = false
+    if bangThread then
+        task.cancel(bangThread)
+        bangThread = nil
+    end
+    if bangAnimationTrack then
+        bangAnimationTrack:Stop()
+        bangAnimationTrack = nil
+    end
+end
+
+local function startBang(typeMode)
+    stopBang()
+    local target = getDmrPlayer()
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+
+    local myChar = LocalPlayer.Character
+    if not myChar or not myChar:FindFirstChild("Humanoid") or not myChar:FindFirstChild("HumanoidRootPart") then return end
+
+    isBanging = true
+
+    pcall(function()
+        local anim = Instance.new("Animation")
+        anim.AnimationId = (myChar.Humanoid.RigType == Enum.HumanoidRigType.R15) and "rbxassetid://148840371" or "rbxassetid://148880882"
+        bangAnimationTrack = myChar.Humanoid:LoadAnimation(anim)
+        bangAnimationTrack:Play(0.01, 1, 10)
+        bangAnimationTrack:AdjustSpeed(10)
+    end)
+
+    bangThread = task.spawn(function()
+        local toggleDist = false
+
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            if not isBanging then
+                connection:Disconnect()
+                return
+            end
+
+            local targetChar = target.Character
+            myChar = LocalPlayer.Character
+
+            if myChar and myChar:FindFirstChild("HumanoidRootPart") and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+                local myHRP = myChar.HumanoidRootPart
+                local targetHRP = targetChar.HumanoidRootPart
+                
+                toggleDist = not toggleDist
+
+                local offset = CFrame.new(0, 0, 0)
+
+                if typeMode == "normal" then
+                    local pushOffset = toggleDist and -0.8 or -2.5
+                    offset = CFrame.new(0, 0, pushOffset)
+                elseif typeMode == "head" then
+                    local pushOffset = toggleDist and 0.8 or 2.5
+                    offset = CFrame.new(0, pushOffset, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                elseif typeMode == "front" then
+                    local pushOffset = toggleDist and 0.8 or 2.5
+                    offset = CFrame.new(0, 0, pushOffset) * CFrame.Angles(0, math.rad(180), 0)
+                elseif typeMode == "fling" then
+                    myHRP.Velocity = Vector3.new(20000, 20000, 20000)
+                    myHRP.RotVelocity = Vector3.new(20000, 20000, 20000)
+                    offset = CFrame.new(math.random(-1, 1), 0, math.random(-1, 1))
+                end
+
+                myHRP.CFrame = targetHRP.CFrame * offset
+            else
+                stopBang()
+                if connection then connection:Disconnect() end
+            end
+        end)
+    end)
+end
+
+local dmrButtonsList = {
+    { Text = "مشاهده", Action = "view" },
+    { Text = "انتقال", Action = "tp" },
+    { Text = "بانق", Action = "bang_normal" },
+    { Text = "بانق بالراس", Action = "bang_head" },
+    { Text = "بانق من الامام", Action = "bang_front" },
+    { Text = "فلنق", Action = "fling" },
+    { Text = "تجميد بالكلبشه", Action = "grab_freeze" },
+    { Text = "سحب بالكلبشه", Action = "grab_pull" },
+    { Text = "تعليق بالكلبشه", Action = "grab_hang" },
+    { Text = "اعاده تعيين", Action = "reset" },
+    { Text = "كلب تلقائي", Action = "auto_dog" },
+    { Text = "تجميد", Action = "freeze" },
+    { Text = "to", Action = "to_target" },
+    { Text = "تعليق الطيران", Action = "flight_hang" },
+    { Text = "سكن Miri", Action = "miri_skin" },
+    { Text = "تطيير في الجو", Action = "air_fly" },
+    { Text = "ايقاف نسخ تلقائي", Action = "stop_autocopy" },
+    { Text = "نسخ تلقائي", Action = "autocopy_1" },
+    { Text = "نسخ تلقائي 1", Action = "autocopy_2" },
+    { Text = "إيقاف البانق / الفلنق", Action = "stop_bang" }
+}
+
+for _, btnData in ipairs(dmrButtonsList) do
+    Tabs.Target:AddButton({
+        Title = btnData.Text,
+        Description = "الأمر: " .. btnData.Text,
+        Callback = function()
+            local target = getDmrPlayer()
+            if not target and btnData.Action ~= "stop_bang" then
+                Fluent:Notify({ Title = "تنبيه الاستهداف", Content = "يرجى كتابة اسم لاعب صحيح في الخانة أعلاه!", Duration = 3 })
+                return
+            end
+
+            if btnData.Action == "bang_normal" then
+                startBang("normal")
+                Fluent:Notify({ Title = "البانق", Content = "تم تفعيل البانق السريع على " .. target.Name, Duration = 3 })
+            elseif btnData.Action == "bang_head" then
+                startBang("head")
+                Fluent:Notify({ Title = "البانق", Content = "تم تفعيل البانق السريع بالرأس على " .. target.Name, Duration = 3 })
+            elseif btnData.Action == "bang_front" then
+                startBang("front")
+                Fluent:Notify({ Title = "البانق", Content = "تم تفعيل البانق السريع الأمامي على " .. target.Name, Duration = 3 })
+            elseif btnData.Action == "fling" then
+  
