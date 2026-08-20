@@ -1,0 +1,891 @@
+--[[
+    KHITAM HUB
+    Fluent UI + Samla Scripts + Player Tracker
+    نسخة مرتبة ومجمعة من الصور
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+-- تحميل Fluent
+local Fluent = loadstring(game:HttpGet(
+    "https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"
+))()
+
+local Window = Fluent:CreateWindow({
+    Title = "ختامية",
+    SubTitle = "بواسطة ايتاشي ~ اوبيتو",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "الرئيسية", Icon = "home" }),
+    Player = Window:AddTab({ Title = "اللاعب", Icon = "user" }),
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    Samla = Window:AddTab({ Title = "Samla", Icon = "list" }),
+    Tracker = Window:AddTab({ Title = "Tracker", Icon = "search" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+local function Notify(title, content)
+    Fluent:Notify({
+        Title = title,
+        Content = content,
+        Duration = 3
+    })
+end
+
+-- تشغيل السكربت الخارجي
+local function RunScript(title, url)
+    task.spawn(function()
+        local ok, result = pcall(function()
+            local source = game:HttpGet(url)
+            assert(type(source) == "string" and #source > 0, "تعذر تحميل السكربت")
+
+            local fn = loadstring(source)
+            assert(type(fn) == "function", "السكربت المحمل غير صالح")
+
+            return fn()
+        end)
+
+        if ok then
+            Notify(title, "تم تشغيل السكربت بنجاح ✅")
+        else
+            warn("[KHITAM HUB] "..title.." -> "..tostring(result))
+            Notify(title, "حدث خطأ أثناء تشغيل السكربت ❌")
+        end
+    end)
+end
+
+local function AddScriptButton(tab, title, description, url, notifyTitle)
+    tab:AddButton({
+        Title = title,
+        Description = description,
+
+        Callback = function()
+            RunScript(notifyTitle or title, url)
+        end
+    })
+end
+
+------------------------------------------------------------
+-- الرئيسية
+------------------------------------------------------------
+
+Tabs.Main:AddParagraph({
+    Title = "ختامية",
+    Content = "واجهة تجمع الأدوات والسكربتات الموجودة في القائمة."
+})
+
+Tabs.Main:AddParagraph({
+    Title = "الحالة",
+    Content = "Fluent UI يعمل - اختر التبويب المطلوب."
+})
+
+------------------------------------------------------------
+-- Player
+------------------------------------------------------------
+
+local WalkSpeed = 16
+local JumpPower = 50
+
+local function GetCharacterHumanoid()
+    local character = Players.LocalPlayer.Character
+
+    if not character then
+        return nil
+    end
+
+    return character:FindFirstChildOfClass("Humanoid")
+end
+
+Tabs.Player:AddSlider("WalkSpeed", {
+    Title = "WalkSpeed",
+    Description = "سرعة اللاعب",
+    Default = 16,
+    Min = 0,
+    Max = 200,
+    Rounding = 0,
+
+    Callback = function(value)
+        WalkSpeed = value
+
+        local humanoid = GetCharacterHumanoid()
+
+        if humanoid then
+            humanoid.WalkSpeed = value
+        end
+    end
+})
+
+Tabs.Player:AddSlider("JumpPower", {
+    Title = "JumpPower",
+    Description = "قوة القفز",
+    Default = 50,
+    Min = 0,
+    Max = 200,
+    Rounding = 0,
+
+    Callback = function(value)
+        JumpPower = value
+
+        local humanoid = GetCharacterHumanoid()
+
+        if humanoid then
+            humanoid.UseJumpPower = true
+            humanoid.JumpPower = value
+        end
+    end
+})
+
+Tabs.Player:AddToggle("InfJump", {
+    Title = "InfJump",
+    Description = "قفز لا نهائي",
+    Default = false
+}):OnChanged(function(enabled)
+
+    if enabled then
+
+        if not _G.KHITAM_InfJumpConnection then
+
+            _G.KHITAM_InfJumpConnection =
+                game:GetService("UserInputService").JumpRequest:Connect(function()
+
+                    local humanoid = GetCharacterHumanoid()
+
+                    if humanoid then
+                        humanoid:ChangeState(
+                            Enum.HumanoidStateType.Jumping
+                        )
+                    end
+
+                end)
+
+        end
+
+    else
+
+        if _G.KHITAM_InfJumpConnection then
+            _G.KHITAM_InfJumpConnection:Disconnect()
+            _G.KHITAM_InfJumpConnection = nil
+        end
+
+    end
+
+end)
+
+Players.LocalPlayer.CharacterAdded:Connect(function(character)
+
+    local humanoid = character:WaitForChild("Humanoid", 10)
+
+    if humanoid then
+        humanoid.WalkSpeed = WalkSpeed
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = JumpPower
+    end
+
+end)
+
+------------------------------------------------------------
+-- Visuals
+------------------------------------------------------------
+
+Tabs.Visuals:AddToggle("Fullbright", {
+    Title = "Fullbright",
+    Description = "رفع إضاءة الخريطة",
+    Default = false
+}):OnChanged(function(enabled)
+
+    local Lighting = game:GetService("Lighting")
+
+    if enabled then
+
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+
+    else
+
+        Lighting.GlobalShadows = true
+
+    end
+
+end)
+
+local ESPObjects = {}
+
+local function ClearESP()
+
+    for _, highlight in pairs(ESPObjects) do
+
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+
+    end
+
+    table.clear(ESPObjects)
+end
+
+local function AddESP(player)
+
+    if player == Players.LocalPlayer then
+        return
+    end
+
+    local character = player.Character
+
+    if not character then
+        return
+    end
+
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+    end
+
+    local highlight = Instance.new("Highlight")
+
+    highlight.Name = "KHITAM_ESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.65
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+
+    ESPObjects[player] = highlight
+end
+
+Tabs.Visuals:AddToggle("ESPPlayers", {
+    Title = "ESP Players",
+    Description = "إظهار اللاعبين",
+    Default = false
+}):OnChanged(function(enabled)
+
+    ClearESP()
+
+    if enabled then
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            AddESP(player)
+        end
+
+    end
+
+end)
+
+Players.PlayerAdded:Connect(function(player)
+
+    player.CharacterAdded:Connect(function()
+
+        task.wait(0.5)
+
+        if Fluent.Options.ESPPlayers
+            and Fluent.Options.ESPPlayers.Value then
+
+            AddESP(player)
+
+        end
+
+    end)
+
+end)
+
+------------------------------------------------------------
+-- Samla
+------------------------------------------------------------
+
+Tabs.Samla:AddParagraph({
+    Title = "السكربتات",
+    Content = "اضغط على أي زر لتشغيل السكربت المرتبط به."
+})
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت القمر 🌙",
+    "تشغيل سكربت ماب البوت",
+    "https://raw.githubusercontent.com/n0kc/AtomicHub/main/Map-Al-Biout.lua",
+    "سكربت إيمبو"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت ضمه إضافي (10HM3AF4)",
+    "تشغيل السكربت المطلوب",
+    "https://pastebin.com/raw/10HM3AF4",
+    "سكربت ضمه"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت رايفكس هوب العربي (RAVEX HUB ARAB)",
+    "ماب البيوت العربي - تشغيل سكربت RAVEX HUB",
+    "https://rawscripts.net/raw/Brookhaven-RP-RAVEX-HUB-ARAB-NOW-86210",
+    "رايفكس هوب العربي"
+)
+
+------------------------------------------------------------
+-- Rayfield UI
+------------------------------------------------------------
+
+Tabs.Samla:AddButton({
+
+    Title = "واجهة Rayfield UI",
+
+    Description = "الواجهة التي تحتوي على أدوات التحكم Rayfield",
+
+    Callback = function()
+
+        task.spawn(function()
+
+            local ok, err = pcall(function()
+
+                local Rayfield =
+                    loadstring(
+                        game:HttpGet("https://sirius.menu/rayfield")
+                    )()
+
+                local RayWindow = Rayfield:CreateWindow({
+
+                    Name = "عنوان السكربت",
+
+                    LoadingTitle = "بجاري التحميل...",
+
+                    LoadingSubtitle =
+                        "بواسطة ايتاشي-سورا-اوبتو",
+
+                    ConfigurationSaving = {
+                        Enabled = false
+                    },
+
+                    Discord = {
+                        Enabled = false
+                    },
+
+                    KeySystem = false
+                })
+
+                local MainTab =
+                    RayWindow:CreateTab(
+                        "4483362458",
+                        "الرئيسية"
+                    )
+
+                MainTab:CreateButton({
+
+                    Name = "اسم الزر",
+
+                    Callback = function()
+                    end
+
+                })
+
+            end)
+
+            if ok then
+
+                Notify(
+                    "واجهة رايفلد",
+                    "تم تحميل الواجهة بنجاح 🚀"
+                )
+
+            else
+
+                warn(
+                    "[KHITAM HUB] Rayfield -> "
+                    .. tostring(err)
+                )
+
+                Notify(
+                    "واجهة رايفلد",
+                    "فشل تحميل الواجهة ❌"
+                )
+
+            end
+
+        end)
+
+    end
+
+})
+
+------------------------------------------------------------
+-- باقي السكربتات
+------------------------------------------------------------
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت جيز مانع الجواز (Gaze Anti-Bypass)",
+    "تشغيل سكربت الحماية المقدم من جيز مانع الجواز",
+    "https://rawscripts.net/raw/Universal-Script-Gaze-Anti-Bypass-but-Kind-of-Better-29119",
+    "جيز مانع الجواز"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت عزرائيل هوب (3zrael Hub)",
+    "تشغيل سكربت عزرائيل هوب الشامل",
+    "https://rawscripts.net/raw/Universal-Script-3zrael-hub-129409",
+    "عزرائيل هوب"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت عبد هوب برو (ABD HUB PRO)",
+    "تشغيل سكربت عبد هوب برو الشامل",
+    "https://rawscripts.net/raw/Universal-Script-ABD-HUB-PRO-238979",
+    "عبد هوب برو"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "مخفض اللاغ السريع",
+    "تشغيل سكربت إزالة اللاغ وتقليل الجودة",
+    "https://rawscripts.net/raw/Universal-Script-Anti-Lag-43980",
+    "مخفض اللاغ"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت عبد من هات (ABD HUN CHAT)",
+    "تشغيل سكربت عبد هات",
+    "https://rawscripts.net/raw/Universal-Script-ABD-HUN-CHAT-241712",
+    "عبد من هات"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت الشيخ فويـد (ALSHABA7 VOID)",
+    "تشغيل سكربت الشيخ فويـد",
+    "https://raw.githubusercontent.com/XxAbood/ALSHABA7-VOID/refs/heads/main/ALSHABA7%20VOID",
+    "الشيخ فويـد"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت مادارا الضغط الثنائي (Auto Clicker)",
+    "تشغيل سكربت الضغط السريع الثنائي",
+    "https://raw.githubusercontent.com/MADARA9223/AUTO-CLICK/refs/heads/main/MADARA%20AUTO%20CLICK",
+    "الضغط الثنائي"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت رحمة (VR7)",
+    "تشغيل سكربت رحمة اون توب",
+    "https://raw.githubusercontent.com/VR7ss/OMK/refs/heads/main/VR7-ON-TOP",
+    "VR7 رحمة"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت صلات حمودة (HAMODAH)",
+    "تشغيل سكربت صلات حمودة",
+    "https://raw.githubusercontent.com/SALAH142876/HAMODAH_ON_TOP/refs/heads/main/Protected_7545697692462583.txt",
+    "حمودة اون توب"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت ماب البوت 🌙",
+    "تشغيل سكربت ماب البوت",
+    "https://raw.githubusercontent.com/n0kc/AtomicHub/main/Map-Al-Biout.lua",
+    "ماب البوت"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "V3 مانع الحظر والطرد",
+    "تشغيل سكربت الحماية من الحظر والطرد",
+    "https://raw.githubusercontent.com/RealButo20/AI-Scripts/refs/heads/main/AntiAFK%20V3.lua",
+    "V3 مانع الحظر"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت مشفر (IXTyso233)",
+    "تشغيل سكربت Encrypt-X الإضافي",
+    "https://encrypt-x.pages.dev/Scripts?Id=IXTyso233",
+    "مشفر اكس"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت مشفر (HGFTRESD)",
+    "تشغيل سكربت Encrypt-X الإضافي",
+    "https://encrypt-x.pages.dev/Scripts?Id=HGFTRESD",
+    "مشفر اكس"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت مشفر (GHFDSAXZ)",
+    "تشغيل سكربت Encrypt-X الإضافي",
+    "https://encrypt-x.pages.dev/Scripts?Id=GHFDSAXZ",
+    "مشفر اكس"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت دارك ستارك (Dark Stark)",
+    "تشغيل سكربت ماب البيوت دارك ستارك",
+    "https://rawscripts.net/raw/Brookhaven-RP-DARK-STARK-226160",
+    "دارك ستارك"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "العام VR7",
+    "تشغيل سكربت VR7 العام",
+    "https://rawscripts.net/raw/Universal-Script-VR7-45290",
+    "العام VR7"
+)
+
+AddScriptButton(
+    Tabs.Samla,
+    "سكربت ابن المصمم",
+    "تشغيل السكربت الإضافي",
+    "https://pastebin.com/raw/9ZPk3Wyp",
+    "القوة الخفية للمصمم"
+)
+
+------------------------------------------------------------
+-- Tracker
+------------------------------------------------------------
+
+local scriptStartTime = os.time()
+
+local playerData = {}
+
+local function registerPlayer(player)
+
+    playerData[player.UserId] = {
+
+        joinTime = os.time(),
+
+        totalTime = 0,
+
+        leaves = 0,
+
+        isOnline = true
+
+    }
+
+end
+
+local function getPlayerTotalTime(userId)
+
+    local info = playerData[userId]
+
+    if not info then
+        return 0
+    end
+
+    local total = info.totalTime or 0
+
+    if info.isOnline and info.joinTime then
+
+        total =
+            total +
+            (os.time() - info.joinTime)
+
+    end
+
+    return total
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    registerPlayer(player)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    registerPlayer(player)
+end)
+
+local trackerParagraph =
+    Tabs.Tracker:AddParagraph({
+
+        Title = "الوقت المنقضي",
+
+        Content = "جاري الحساب..."
+
+    })
+
+task.spawn(function()
+
+    while task.wait(1) do
+
+        local elapsed =
+            os.time() - scriptStartTime
+
+        trackerParagraph:SetDesc(
+
+            string.format(
+
+                "الوقت المنقضي: %02d:%02d:%02d",
+
+                math.floor(elapsed / 3600),
+
+                math.floor(
+                    (elapsed % 3600) / 60
+                ),
+
+                elapsed % 60
+
+            )
+
+        )
+
+    end
+
+end)
+
+local targetPlayerName = ""
+
+Tabs.Tracker:AddInput("SearchUser", {
+
+    Title = "اسم اللاعب",
+
+    Default = "",
+
+    Placeholder = "اكتب اسم اللاعب...",
+
+    Numeric = false,
+
+    Finished = false,
+
+    Callback = function(value)
+
+        targetPlayerName =
+            tostring(value or "")
+
+    end
+
+})
+
+local leaveSound = Instance.new("Sound")
+
+leaveSound.SoundId =
+    "rbxassetid://138081509"
+
+leaveSound.Volume = 10
+
+leaveSound.Parent =
+    game:GetService("SoundService")
+
+local trackedParagraph = nil
+
+Tabs.Tracker:AddButton({
+
+    Title = "تتبع اللاعب",
+
+    Description =
+        "يعرض تفاصيل الدخول والخروج والمدة",
+
+    Callback = function()
+
+        if targetPlayerName == "" then
+
+            Notify(
+                "التتبع",
+                "اكتب اسم اللاعب أولاً"
+            )
+
+            return
+        end
+
+        local foundPlayer = nil
+
+        local wanted =
+            string.lower(targetPlayerName)
+
+        for _, player in ipairs(
+            Players:GetPlayers()
+        ) do
+
+            if string.lower(player.Name) == wanted
+                or string.lower(player.DisplayName) == wanted then
+
+                foundPlayer = player
+
+                break
+            end
+
+        end
+
+        if not foundPlayer then
+
+            Notify(
+                "التتبع",
+                "اللاعب غير موجود حالياً"
+            )
+
+            return
+        end
+
+        if trackedParagraph then
+
+            pcall(function()
+
+                trackedParagraph:Destroy()
+
+            end)
+
+            trackedParagraph = nil
+
+        end
+
+        trackedParagraph =
+            Tabs.Tracker:AddParagraph({
+
+                Title =
+                    "تتبع: "
+                    .. foundPlayer.Name,
+
+                Content =
+                    "جاري جلب البيانات..."
+
+            })
+
+        task.spawn(function()
+
+            while foundPlayer
+                and foundPlayer.Parent do
+
+                local info =
+                    playerData[
+                        foundPlayer.UserId
+                    ]
+
+                if info then
+
+                    local total =
+                        getPlayerTotalTime(
+                            foundPlayer.UserId
+                        )
+
+                    trackedParagraph:SetDesc(
+
+                        string.format(
+
+                            "وقت الدخول: %s\nمدة اللعب: %02d:%02d:%02d\nمرات الخروج: %d",
+
+                            os.date(
+                                "%H:%M:%S",
+                                info.joinTime
+                            ),
+
+                            math.floor(
+                                total / 3600
+                            ),
+
+                            math.floor(
+                                (total % 3600) / 60
+                            ),
+
+                            total % 60,
+
+                            info.leaves or 0
+
+                        )
+
+                    )
+
+                end
+
+                task.wait(1)
+
+            end
+
+        end)
+
+        Notify(
+            "تتبع اللاعبين",
+            "تم بدء تتبع "
+            .. foundPlayer.Name
+        )
+
+    end
+
+})
+
+Players.PlayerRemoving:Connect(function(player)
+
+    local info =
+        playerData[player.UserId]
+
+    if info then
+
+        if info.isOnline
+            and info.joinTime then
+
+            info.totalTime =
+                (info.totalTime or 0)
+                + (
+                    os.time()
+                    - info.joinTime
+                )
+
+        end
+
+        info.isOnline = false
+
+        info.leaves =
+            (info.leaves or 0) + 1
+
+    end
+
+    if string.lower(targetPlayerName)
+        == string.lower(player.Name) then
+
+        pcall(function()
+            leaveSound:Play()
+        end)
+
+        Notify(
+            "خروج لاعب",
+            player.Name
+            .. " خرج من اللعبة 🚪"
+        )
+
+    end
+
+end)
+
+------------------------------------------------------------
+-- Settings
+------------------------------------------------------------
+
+Tabs.Settings:AddParagraph({
+
+    Title = "معلومات السكربت",
+
+    Content =
+        "تم تجميع الواجهة والسكربتات والتتبع في نسخة واحدة."
+
+})
+
+Tabs.Settings:AddParagraph({
+
+    Title = "الإصدار",
+
+    Content = "KHITAM HUB - Final"
+
+})
+
+------------------------------------------------------------
+-- تشغيل التبويب الأول
+------------------------------------------------------------
+
+Window:SelectTab(1)
+
+Notify(
+    "ختامية",
+    "تم تحميل الواجهة بنجاح 🚀"
+)
