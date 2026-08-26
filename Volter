@@ -1,0 +1,219 @@
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+
+-- الوصول لشاشة فولتير
+local mainGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("VoltaireGhanamiVersion") 
+               or CoreGui:FindFirstChild("VoltaireGhanamiVersion")
+
+if not mainGui then
+    -- محاولة ثانية في حال كان الاسم مختلف بالذاكرة
+    mainGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChildOfClass("ScreenGui")
+end
+
+-- إنشاء واجهة الزر العائم المستقل
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "VoltairePointToggle"
+ToggleGui.ResetOnSpawn = false
+ToggleGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- الزر العائم القابل للتحريك
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Parent = ToggleGui
+ToggleBtn.Size = UDim2.new(0, 110, 0, 35)
+ToggleBtn.Position = UDim2.new(0.8, 0, 0.2, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+ToggleBtn.Text = "👁️ إخفاء النقاط"
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 14
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true -- تحريك الزر بأي مكان باللمس أو الماوس
+
+-- إضافة حواف دائرية للظهر
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = ToggleBtn
+
+local isHidden = false
+
+-- وظيفة الإخفاء والإظهار عند الضغط
+ToggleBtn.MouseButton1Click:Connect(function()
+    local targetGui = LocalPlayer.PlayerGui:FindFirstChild("VoltaireGhanamiVersion")
+    if not targetGui then return end
+    
+    local mainFrame = targetGui:FindFirstChildOfClass("Frame")
+    if not mainFrame then return end
+
+    isHidden = not isHidden
+
+    -- البحث عن أزرار والنصوص الخاصة بالتعديل وإخفائها
+    for _, child in ipairs(mainFrame:GetChildren()) do
+        -- رصد أزرار (+) و (-) والنصوص التابعة لها
+        if child:IsA("TextButton") and (child.Text == "+" or child.Text == "-") then
+            child.Visible = not isHidden
+        elseif child:IsA("TextLabel") and string.find(child.Text, "نقاط") then
+            child.Visible = not isHidden
+        end
+    end
+
+    -- تغيير نص وتأثير الزر العائم
+    if isHidden then
+        ToggleBtn.Text = "👁️ إظهار النقاط"
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        ToggleBtn.Text = "👁️ إخفاء النقاط"
+        ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    end
+end)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "VoltaireGhanamiVersion"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 320, 0, 320)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Title.Size = UDim2.new(1, 0, 0, 38)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "⚡ فولتير - نسخة الغنامي ابن زينب ⚡"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.TextSize = 15
+
+local targetPrefix = ""
+local isTracking = false
+local leavePts = 3
+local playerScores = {}
+
+local NameInput = Instance.new("TextBox")
+NameInput.Parent = MainFrame
+NameInput.PlaceholderText = "اكتب الحرفين هنا..."
+NameInput.Size = UDim2.new(0.55, 0, 0, 30)
+NameInput.Position = UDim2.new(0.05, 0, 0.16, 0)
+NameInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+NameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local StartBtn = Instance.new("TextButton")
+StartBtn.Parent = MainFrame
+StartBtn.Size = UDim2.new(0.32, 0, 0, 30)
+StartBtn.Position = UDim2.new(0.63, 0, 0.16, 0)
+StartBtn.Text = "تفعيل"
+StartBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.Font = Enum.Font.SourceSansBold
+
+local ScrollList = Instance.new("ScrollingFrame")
+ScrollList.Parent = MainFrame
+ScrollList.Position = UDim2.new(0.05, 0, 0.46, 0)
+ScrollList.Size = UDim2.new(0.9, 0, 0.5, 0)
+ScrollList.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = ScrollList
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 5)
+
+-- دالة تحديث السجل اللحظي
+local function forceUpdateUI()
+    for _, child in ipairs(ScrollList:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for userId, data in pairs(playerScores) do
+        local Card = Instance.new("TextLabel")
+        Card.Parent = ScrollList
+        Card.Size = UDim2.new(1, 0, 0, 40)
+        Card.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        Card.TextColor3 = Color3.fromRGB(255, 50, 50) -- لون النص أحمر مميز
+        Card.Font = Enum.Font.SourceSansBold
+        Card.TextSize = 14
+        Card.Text = string.format(" 🎯 الخصم: %s\n 📤 خروج: %d", data.name, data.leaveCount * leavePts)
+    end
+end
+
+-- أزرار التحكم بالنقاط (+ و -)
+local function createLeaveCounter(yPos, labelText, defaultVal, callback)
+    local val = defaultVal
+    local label = Instance.new("TextLabel")
+    label.Parent = MainFrame
+    label.Position = UDim2.new(0.05, 0, yPos, 0)
+    label.Size = UDim2.new(0.5, 0, 0, 30)
+    label.Text = labelText .. ": " .. val
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.SourceSansBold
+
+    local minusBtn = Instance.new("TextButton")
+    minusBtn.Parent = MainFrame
+    minusBtn.Position = UDim2.new(0.6, 0, yPos, 0)
+    minusBtn.Size = UDim2.new(0.15, 0, 0, 30)
+    minusBtn.Text = "-"
+    minusBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    local plusBtn = Instance.new("TextButton")
+    plusBtn.Parent = MainFrame
+    plusBtn.Position = UDim2.new(0.78, 0, yPos, 0)
+    plusBtn.Size = UDim2.new(0.15, 0, 0, 30)
+    plusBtn.Text = "+"
+    plusBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+    plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+    minusBtn.MouseButton1Click:Connect(function()
+        if val > 0 then
+            val = val - 1
+            label.Text = labelText .. ": " .. val
+            callback(val)
+            forceUpdateUI()
+        end
+    end)
+
+    plusBtn.MouseButton1Click:Connect(function()
+        val = val + 1
+        label.Text = labelText .. ": " .. val
+        callback(val)
+        forceUpdateUI()
+    end)
+end
+
+createLeaveCounter(0.28, "نقاط الخروج", leavePts, function(v) leavePts = v end)
+
+-- عند ضغط زر "تفعيل / شغال ✅"
+StartBtn.MouseButton1Click:Connect(function()
+    targetPrefix = NameInput.Text:lower():gsub("%s+", "")
+    if #targetPrefix >= 1 then
+        isTracking = true
+        StartBtn.Text = "شغال ✅"
+        StartBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            local name = p.Name:lower()
+            local display = p.DisplayName:lower()
+            if name:find(targetPrefix, 1, true) or display:find(targetPrefix, 1, true) then
+                playerScores[p.UserId] = { name = p.Name, leaveCount = 1 }
+            end
+        end
+        forceUpdateUI()
+    end
+end)
+
+-- رصد الخروج الفوري
+Players.PlayerRemoving:Connect(function(player)
+    if not isTracking then return end
+    if playerScores[player.UserId] then
+        playerScores[player.UserId].leaveCount = playerScores[player.UserId].leaveCount + 1
+        forceUpdateUI()
+    end
+end)
