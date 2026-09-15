@@ -1,247 +1,262 @@
 -- ============================================================
--- 📜 سكربت شات تيم التائبون - النسخة الأصلية المطابقة لشات روبلكس
+-- 📜 سكربت شات مخصص كامل (شامل للتصفية وحجب رسائل منع روبلوكس)
 -- ============================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
 -- 1. تنظيف أي واجهة قديمة
-for _, child in ipairs(CoreGui:GetChildren()) do
-    if child.Name == "TaeeboonChatGui" then
-        child:Destroy()
+for _, parent in ipairs({CoreGui, LocalPlayer:FindFirstChild("PlayerGui")}) do
+    if parent then
+        local old = parent:FindFirstChild("CustomFullChatGui")
+        if old then old:Destroy() end
     end
 end
 
 -- 2. إنشاء الواجهة الرئيسية
-local ChatGui = Instance.new("ScreenGui")
-ChatGui.Name = "TaeeboonChatGui"
-ChatGui.ResetOnSpawn = false
-ChatGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomFullChatGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 999
+ScreenGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 
--- زر فتح/إغلاق الشات
-local ToggleBtn = Instance.new("TextButton", ChatGui)
+-- 3. زر التبديل العائم (قابل للسحب والتنسيق)
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
 ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Size = UDim2.new(0, 42, 0, 42)
-ToggleBtn.Position = UDim2.new(0, 15, 0.35, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0, 15, 0.3, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 ToggleBtn.BackgroundTransparency = 0.2
 ToggleBtn.Text = "💬"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.TextSize = 20
+ToggleBtn.TextSize = 22
 ToggleBtn.BorderSizePixel = 0
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
 local ToggleCorner = Instance.new("UICorner", ToggleBtn)
-ToggleCorner.CornerRadius = UDim.new(0, 10)
+ToggleCorner.CornerRadius = UDim.new(0, 12)
 
--- الإطار الرئيسي (تصميم شات روبلكس الأصلي)
-local MainFrame = Instance.new("Frame", ChatGui)
+-- 4. إطار الشات الرئيسي (قابل للسحب)
+local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 360, 0, 240)
-MainFrame.Position = UDim2.new(0, 15, 0, 15)
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.4
+MainFrame.Position = UDim2.new(0, 15, 0.3, 55)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
+MainFrame.Active = true
+MainFrame.Draggable = true
 local MainCorner = Instance.new("UICorner", MainFrame)
-MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.CornerRadius = UDim.new(0, 10)
 
--- شريط العنوان العلوي
-local HeaderFrame = Instance.new("Frame", MainFrame)
-HeaderFrame.Size = UDim2.new(1, 0, 0, 32)
-HeaderFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-HeaderFrame.BackgroundTransparency = 0.2
-HeaderFrame.BorderSizePixel = 0
+-- الشريط العلوي
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 32)
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.BackgroundTransparency = 0.1
+Header.BorderSizePixel = 0
 
-local TitleText = Instance.new("TextLabel", HeaderFrame)
-TitleText.Size = UDim2.new(1, -15, 1, 0)
-TitleText.Position = UDim2.new(0, 12, 0, 0)
-TitleText.BackgroundTransparency = 1
-TitleText.Text = "شات تيم التائبون (النسخة الأصلية)"
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.Font = Enum.Font.SourceSansBold
-TitleText.TextSize = 16
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "شات السيرفر المخصص"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- حاوية الرسائل (ScrollingFrame)
+local CloseBtn = Instance.new("TextButton", Header)
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -30, 0, 2)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+CloseBtn.TextSize = 16
+
+-- قائمة عرض الرسائل
 local MessageLog = Instance.new("ScrollingFrame", MainFrame)
-MessageLog.Name = "MessageLog"
-MessageLog.Size = UDim2.new(1, -16, 1, -80)
-MessageLog.Position = UDim2.new(0, 8, 0, 36)
+MessageLog.Size = UDim2.new(1, -12, 1, -82)
+MessageLog.Position = UDim2.new(0, 6, 0, 36)
 MessageLog.BackgroundTransparency = 1
 MessageLog.BorderSizePixel = 0
 MessageLog.CanvasSize = UDim2.new(0, 0, 0, 0)
 MessageLog.ScrollBarThickness = 4
 MessageLog.ScrollBarImageColor3 = Color3.fromRGB(200, 200, 200)
 
-local UIListLayout = Instance.new("UIListLayout", MessageLog)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 4)
+local UIList = Instance.new("UIListLayout", MessageLog)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 4)
 
--- مربع كتابة الرسائل (Input)
+-- منطقة إدخال النص والإرسال
 local InputFrame = Instance.new("Frame", MainFrame)
-InputFrame.Size = UDim2.new(1, -16, 0, 32)
-InputFrame.Position = UDim2.new(0, 8, 1, -38)
-InputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-InputFrame.BackgroundTransparency = 0.3
-InputFrame.BorderSizePixel = 0
-local InputCorner = Instance.new("UICorner", InputFrame)
-InputCorner.CornerRadius = UDim.new(0, 6)
+InputFrame.Size = UDim2.new(1, -12, 0, 34)
+InputFrame.Position = UDim2.new(0, 6, 1, -40)
+InputFrame.BackgroundTransparency = 1
 
 local TextBox = Instance.new("TextBox", InputFrame)
-TextBox.Size = UDim2.new(1, -16, 1, 0)
-TextBox.Position = UDim2.new(0, 8, 0, 0)
-TextBox.BackgroundTransparency = 1
+TextBox.Size = UDim2.new(0.75, -5, 1, 0)
+TextBox.Position = UDim2.new(0, 0, 0, 0)
+TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TextBox.BackgroundTransparency = 0.2
 TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextBox.PlaceholderText = "اكتب رسالتك واضغط Enter..."
-TextBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+TextBox.PlaceholderText = "اكتب رسالتك..."
+TextBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 TextBox.Font = Enum.Font.SourceSans
 TextBox.TextSize = 15
 TextBox.TextXAlignment = Enum.TextXAlignment.Left
 TextBox.ClearTextOnFocus = false
+local TextCorner = Instance.new("UICorner", TextBox)
+TextCorner.CornerRadius = UDim.new(0, 6)
 
--- التبديل بين إظهار وإخفاء الشات
+local SendBtn = Instance.new("TextButton", InputFrame)
+SendBtn.Size = UDim2.new(0.25, 0, 1, 0)
+SendBtn.Position = UDim2.new(0.75, 5, 0, 0)
+SendBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+SendBtn.Text = "إرسال"
+SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SendBtn.Font = Enum.Font.SourceSansBold
+SendBtn.TextSize = 14
+local BtnCorner = Instance.new("UICorner", SendBtn)
+BtnCorner.CornerRadius = UDim.new(0, 6)
+
+-- 5. التحكم بالواجهة
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
 
--- دالة طباعة الرسائل بتنسيق روبلكس الأصلي
-local processedMessages = {}
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.Slash then
+        task.wait()
+        MainFrame.Visible = true
+        TextBox:CaptureFocus()
+    end
+end)
 
-local function displayChatMessage(speakerName, text, customColor)
-    if not text or text == "" then return end
-    
-    -- تجنب تكرار الرسالة ذاتها في نفس اللحظة
-    local msgKey = speakerName .. ":" .. text
-    if processedMessages[msgKey] and (tick() - processedMessages[msgKey]) < 0.5 then
+-- 6. دالة طباعة الرسائل وتصفية تنبيهات النظام
+local recentMsgs = {}
+local function PrintMessage(senderName, text, isSystem)
+    if not text or text:match("^%s*$") then return end
+
+    -- فلترة ومنع إظهار تحذيرات روبلوكس الخاصة بالإعدادات
+    if text:find("إعدادات الدردشة لديك") or text:find("your chat settings") or text:find("prevent you from") then
         return
     end
-    processedMessages[msgKey] = tick()
 
-    local nameColorHex = "55FFFF"
-    if speakerName:find(LocalPlayer.Name) or speakerName:find(LocalPlayer.DisplayName) then
-        nameColorHex = "55FF7F" -- لون أخضر للاعب الحالي
-    elseif customColor then
-        nameColorHex = customColor
+    local msgKey = senderName .. ":" .. text
+    if recentMsgs[msgKey] and (tick() - recentMsgs[msgKey]) < 0.4 then
+        return
+    end
+    recentMsgs[msgKey] = tick()
+
+    local lbl = Instance.new("TextLabel", MessageLog)
+    lbl.Size = UDim2.new(1, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.RichText = true
+    lbl.Font = Enum.Font.SourceSansBold
+    lbl.TextSize = 15
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.TextWrapped = true
+
+    if isSystem then
+        lbl.Text = string.format("<font color='#FFE600'>[النظام]: %s</font>", text)
+    else
+        local isMe = (senderName == LocalPlayer.Name or senderName == LocalPlayer.DisplayName)
+        local color = isMe and "#55FF7F" or "#00E5FF"
+        lbl.Text = string.format("<font color='%s'>[%s]:</font> %s", color, senderName, text)
     end
 
-    local msgLabel = Instance.new("TextLabel", MessageLog)
-    msgLabel.Size = UDim2.new(1, 0, 0, 0)
-    msgLabel.BackgroundTransparency = 1
-    msgLabel.RichText = true
-    msgLabel.Font = Enum.Font.SourceSans
-    msgLabel.TextSize = 15
-    msgLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    msgLabel.TextWrapped = true
-    msgLabel.Text = string.format("<font color='#%s'><b>[%s]:</b></font> %s", nameColorHex, speakerName, text)
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
 
-    -- ضبط الارتفاع تلقائياً حسب طول النص
-    msgLabel.AutomaticSize = Enum.AutomaticSize.Y
-
-    -- التمرير للأسفل تلقائياً
     task.defer(function()
-        MessageLog.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
-        MessageLog.CanvasPosition = Vector2.new(0, UIListLayout.AbsoluteContentSize.Y + 1000)
+        MessageLog.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
+        MessageLog.CanvasPosition = Vector2.new(0, UIList.AbsoluteContentSize.Y + 999)
     end)
 end
 
--- ============================================================
--- 3. الربط مع نظام شات روبلكس الأصلي (إرسال واستقبال)
--- ============================================================
-
--- أ) الاستقبال من TextChatService (النظام الجديد)
+-- 7. استقبال الرسائل من السيرفر وباقي اللاعبين
 pcall(function()
-    if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        TextChatService.MessageReceived:Connect(function(textChatMessage)
-            if textChatMessage and textChatMessage.TextSource then
-                local senderPlayer = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
-                if senderPlayer then
-                    displayChatMessage(senderPlayer.DisplayName .. " (@" .. senderPlayer.Name .. ")", textChatMessage.Text)
-                end
-            elseif textChatMessage and textChatMessage.PrefixText ~= "" then
-                displayChatMessage("النظام", textChatMessage.Text, "FFFF55")
+    TextChatService.MessageReceived:Connect(function(msg)
+        if msg and msg.TextSource then
+            local plr = Players:GetPlayerByUserId(msg.TextSource.UserId)
+            if plr then
+                PrintMessage(plr.DisplayName, msg.Text)
             end
-        end)
-    end
-end)
-
--- ب) الاستقبال من Legacy Chat (النظام القديم)
-pcall(function()
-    local DefaultChatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-    if DefaultChatEvents then
-        local OnMessageDoneFiltering = DefaultChatEvents:FindFirstChild("OnMessageDoneFiltering")
-        if OnMessageDoneFiltering then
-            OnMessageDoneFiltering.OnClientEvent:Connect(function(messageData)
-                if messageData and messageData.FromSpeaker and messageData.Message then
-                    local senderName = messageData.FromSpeaker
-                    local plr = Players:FindFirstChild(senderName)
-                    local displayName = plr and (plr.DisplayName .. " (@" .. plr.Name .. ")") or senderName
-                    displayChatMessage(displayName, messageData.Message)
-                end
-            end)
         end
-    end
+    end)
 end)
 
--- ج) الاستقبال الاحتياطي المباشر من اللاعبين
-local function hookPlayerChat(plr)
-    plr.Chatted:Connect(function(msg)
-        local nameTag = plr.DisplayName .. " (@" .. plr.Name .. ")"
-        displayChatMessage(nameTag, msg)
-    end)
-end
-
-for _, plr in ipairs(Players:GetPlayers()) do
-    if plr ~= LocalPlayer then
-        hookPlayerChat(plr)
-    end
-end
-Players.PlayerAdded:Connect(hookPlayerChat)
-
--- د) دالة الإرسال للسيرفر الشاملة
-local function sendChatMessage(msgText)
-    if not msgText or msgText:match("^%s*$") then return end
-    
-    local sentSuccessfully = false
-
-    -- تجربة الإرسال عبر TextChatService
+task.spawn(function()
     pcall(function()
-        if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-            local textChannels = TextChatService:FindFirstChild("TextChannels", true)
-            local generalChannel = textChannels and textChannels:FindFirstChild("RBXGeneral")
-            if generalChannel then
-                generalChannel:SendAsync(msgText)
-                sentSuccessfully = true
+        local chatEvents = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents", 3)
+        if chatEvents then
+            local onMsg = chatEvents:WaitForChild("OnMessageDoneFiltering", 3)
+            if onMsg then
+                onMsg.OnClientEvent:Connect(function(data)
+                    if data and data.FromSpeaker and data.Message then
+                        local plr = Players:FindFirstChild(data.FromSpeaker)
+                        local name = plr and plr.DisplayName or data.FromSpeaker
+                        PrintMessage(name, data.Message)
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+local function hookPlayer(plr)
+    plr.Chatted:Connect(function(msg)
+        if plr ~= LocalPlayer then
+            PrintMessage(plr.DisplayName, msg)
+        end
+    end)
+end
+for _, plr in ipairs(Players:GetPlayers()) do
+    hookPlayer(plr)
+end
+Players.PlayerAdded:Connect(hookPlayer)
+
+-- 8. دالة الإرسال مع الطباعة المحلية الفورية
+local function SendMessage()
+    local text = TextBox.Text
+    if not text or text:match("^%s*$") then return end
+    TextBox.Text = ""
+
+    -- عرض الرسالة محلياً فوراً في قائمتك
+    PrintMessage(LocalPlayer.DisplayName, text)
+
+    -- إرسال الرسالة إلى قنوات روبلوكس بدون إظهار أخطاء النظام
+    pcall(function()
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        if channels then
+            local mainChannel = channels:FindFirstChild("RBXGeneral") or channels:FindFirstChildOfClass("TextChannel")
+            if mainChannel then
+                mainChannel:SendAsync(text)
             end
         end
     end)
 
-    -- تجربة الإرسال عبر Legacy Chat
-    if not sentSuccessfully then
-        pcall(function()
-            local DefaultChatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-            local SayMessageRequest = DefaultChatEvents and DefaultChatEvents:FindFirstChild("SayMessageRequest")
-            if SayMessageRequest then
-                SayMessageRequest:FireServer(msgText, "All")
-                sentSuccessfully = true
-            end
-        end)
-    end
-
-    -- طباعة الرسالة محلياً فور الإرسال
-    displayChatMessage(LocalPlayer.DisplayName .. " (@" .. LocalPlayer.Name .. ")", msgText)
+    pcall(function()
+        local events = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        local sayReq = events and events:FindFirstChild("SayMessageRequest")
+        if sayReq then
+            sayReq:FireServer(text, "All")
+        end
+    end)
 end
 
--- عند كتابة النص والضغط على Enter
-TextBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local text = TextBox.Text
-        TextBox.Text = ""
-        sendChatMessage(text)
-    end
+SendBtn.MouseButton1Click:Connect(SendMessage)
+TextBox.FocusLost:Connect(function(enter)
+    if enter then SendMessage() end
 end)
 
--- رسالة الترحيب الأولى
-displayChatMessage("تيم التائبون", "تم تشغيل الشات الأصلي بنجاح! متصل الآن مع جميع لاعبي السيرفر.", "FFFF00")
+PrintMessage("النظام", "تم تشغيل الشات المخصص بنجاح!", true)
