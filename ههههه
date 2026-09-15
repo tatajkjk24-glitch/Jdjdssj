@@ -1,0 +1,113 @@
+-- LocalScript - شات تيم التائبون (شات نصي فقط)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- مسح أي واجهات قديمة
+for _, child in ipairs(CoreGui:GetChildren()) do
+    if child.Name == "PrivateChatGui" then child:Destroy() end
+end
+
+local ChatGui = Instance.new("ScreenGui")
+ChatGui.Name = "PrivateChatGui"
+ChatGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer.PlayerGui
+
+-- زر فتح وإغلاق الشات (💬)
+local ToggleButton = Instance.new("TextButton", ChatGui)
+ToggleButton.Size = UDim2.new(0, 45, 0, 45)
+ToggleButton.Position = UDim2.new(0, 15, 0.4, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ToggleButton.Text = "💬"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 22
+ToggleButton.BorderSizePixel = 0
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0.5, 0)
+
+-- الإطار الرئيسي للشات
+local ChatFrame = Instance.new("Frame", ChatGui)
+ChatFrame.Name = "ChatFrame"
+ChatFrame.Size = UDim2.new(0, 340, 0, 230)
+ChatFrame.Position = UDim2.new(0, 15, 0, 15)
+ChatFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ChatFrame.BackgroundTransparency = 0.2
+ChatFrame.BorderSizePixel = 0
+Instance.new("UICorner", ChatFrame).CornerRadius = UDim.new(0, 8)
+
+-- الشريط العلوي
+local Header = Instance.new("Frame", ChatFrame)
+Header.Size = UDim2.new(1, 0, 0, 30)
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.BorderSizePixel = 0
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -10, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "شات تيم التائبون"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- سجل الرسائل
+local MessageLog = Instance.new("ScrollingFrame", ChatFrame)
+MessageLog.Size = UDim2.new(1, -10, 0.68, 0)
+MessageLog.Position = UDim2.new(0, 5, 0, 35)
+MessageLog.BackgroundTransparency = 1
+MessageLog.CanvasSize = UDim2.new(0, 0, 0, 0)
+MessageLog.ScrollBarThickness = 4
+
+local UIListLayout = Instance.new("UIListLayout", MessageLog)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- مكان كتابة النص (عرض كامل)
+local TextBox = Instance.new("TextBox", ChatFrame)
+TextBox.Size = UDim2.new(1, -10, 0.18, 0)
+TextBox.Position = UDim2.new(0, 5, 0.78, 0)
+TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderText = "اكتب رسالتك هنا واضغط Enter..."
+TextBox.Font = Enum.Font.SourceSans
+TextBox.TextSize = 14
+Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 4)
+
+-- فتح وإغلاق الواجهة
+ToggleButton.MouseButton1Click:Connect(function()
+    ChatFrame.Visible = not ChatFrame.Visible
+end)
+
+-- دالة إضافة الرسالة إلى السجل
+local function addMessage(sender, text)
+    local lbl = Instance.new("TextLabel", MessageLog)
+    lbl.Size = UDim2.new(1, 0, 0, 18)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 14
+    lbl.Text = "[" .. sender .. "]: " .. text
+    MessageLog.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+    MessageLog.CanvasPosition = Vector2.new(0, MessageLog.AbsoluteCanvasSize.Y)
+end
+
+-- دالة إرسال النص للشات العام لكي يراه الآخرون
+local function sendToPublicChat(msg)
+    local SayMessage = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+    if SayMessage then
+        SayMessage:FireServer(msg, "All")
+    end
+end
+
+-- عند كتابة رسالة والضغط على Enter
+TextBox.FocusLost:Connect(function(enter)
+    if enter and TextBox.Text ~= "" then
+        addMessage(LocalPlayer.Name, TextBox.Text)
+        sendToPublicChat(TextBox.Text)
+        TextBox.Text = ""
+    end
+end)
+
+addMessage("تيم التائبون", "تم تشغيل الشات النصي بنجاح!")
