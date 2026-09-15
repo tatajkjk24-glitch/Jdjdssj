@@ -1,6 +1,7 @@
--- LocalScript - شات تيم التائبون (شات نصي فقط)
+-- LocalScript - شات تيم التائبون (يرسل ويستلم من الجميع)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
@@ -63,13 +64,13 @@ local UIListLayout = Instance.new("UIListLayout", MessageLog)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 
--- مكان كتابة النص (عرض كامل)
+-- مكان كتابة النص
 local TextBox = Instance.new("TextBox", ChatFrame)
 TextBox.Size = UDim2.new(1, -10, 0.18, 0)
 TextBox.Position = UDim2.new(0, 5, 0.78, 0)
 TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextBox.PlaceholderText = "اكتب رسالتك هنا واضغط Enter..."
+TextBox.PlaceholderText = "اكتب رسالتك واضغط Enter..."
 TextBox.Font = Enum.Font.SourceSans
 TextBox.TextSize = 14
 Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 4)
@@ -79,12 +80,13 @@ ToggleButton.MouseButton1Click:Connect(function()
     ChatFrame.Visible = not ChatFrame.Visible
 end)
 
--- دالة إضافة الرسالة إلى السجل
+-- دالة عرض الرسالة في القائمة
 local function addMessage(sender, text)
     local lbl = Instance.new("TextLabel", MessageLog)
     lbl.Size = UDim2.new(1, 0, 0, 18)
     lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    -- تلوين اسمك بالأخضر وأسماء الآخرين بالأبيض
+    lbl.TextColor3 = (sender == LocalPlayer.Name) and Color3.fromRGB(85, 255, 127) or Color3.fromRGB(255, 255, 255)
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Font = Enum.Font.SourceSans
     lbl.TextSize = 14
@@ -93,21 +95,56 @@ local function addMessage(sender, text)
     MessageLog.CanvasPosition = Vector2.new(0, MessageLog.AbsoluteCanvasSize.Y)
 end
 
--- دالة إرسال النص للشات العام لكي يراه الآخرون
-local function sendToPublicChat(msg)
-    local SayMessage = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
-    if SayMessage then
-        SayMessage:FireServer(msg, "All")
-    end
+-- 1. دالة إرسال الشات للجميع (يدعم النظامين)
+local function sendMessage(msg)
+    pcall(function()
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            local rbxGeneral = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if rbxGeneral then
+                rbxGeneral:SendAsync(msg)
+            end
+        else
+            local SayMessage = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+            if SayMessage then
+                SayMessage:FireServer(msg, "All")
+            end
+        end
+    end)
 end
 
--- عند كتابة رسالة والضغط على Enter
+-- 2. دالة استقبال رسائل باقي اللاعبين
+pcall(function()
+    if TextChatService.TextChannels:FindFirstChild("RBXGeneral") then
+        TextChatService.TextChannels.RBXGeneral.MessageReceived:Connect(function(textChatMessage)
+            if textChatMessage.TextSource then
+                local plr = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+                if plr then
+                    addMessage(plr.Name, textChatMessage.Text)
+                end
+            end
+        end)
+    end
+end)
+
+local function listenToPlayer(player)
+    player.Chatted:Connect(function(msg)
+        if TextChatService.ChatVersion ~= Enum.ChatVersion.TextChatService then
+            addMessage(player.Name, msg)
+        end
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    listenToPlayer(p)
+end
+Players.PlayerAdded:Connect(listenToPlayer)
+
+-- عند كتابة النص والضغط على Enter
 TextBox.FocusLost:Connect(function(enter)
     if enter and TextBox.Text ~= "" then
-        addMessage(LocalPlayer.Name, TextBox.Text)
-        sendToPublicChat(TextBox.Text)
+        sendMessage(TextBox.Text)
         TextBox.Text = ""
     end
 end)
 
-addMessage("تيم التائبون", "تم تشغيل الشات النصي بنجاح!")
+addMessage("تيم التائبون", "تم تفعيل الاستقبال والإرسال المباشر للجميع!")
