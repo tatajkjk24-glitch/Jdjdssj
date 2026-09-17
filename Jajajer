@@ -1,0 +1,102 @@
+-- ============================================================
+-- 🚀 Ultimate Roblox Auto-Rejoin + Custom Script + Fly Suite
+-- ============================================================
+
+local VIP_SERVER_CODE = "" -- أضف كود السيرفر الخاص هنا إن وجد
+
+local mainCode = [[
+    repeat task.wait(1) until game:IsLoaded() and game.Players.LocalPlayer
+
+    -- 1️⃣ تشغيل السكربت الخارجي الخاص بك
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-AntiAFK-v-AntiKick-V3-v-Kick-Attempt-Logger-27977"))()
+        end)
+    end)
+
+    -- 2️⃣ تشغيل Infinity Yield وتفعيل أمر الطيران تلقائياً
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+            task.wait(2)
+            if execCmd then 
+                pcall(function() execCmd("fly") end) 
+            end
+        end)
+    end)
+
+    -- 3️⃣ تخفيف الجرافيكس واللاغ (Anti-Lag)
+    pcall(function()
+        game:GetService("Lighting").GlobalShadows = false
+        if setfpscap then setfpscap(30) end
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then 
+                v.Material = Enum.Material.Plastic 
+                v.Reflectance = 0
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then 
+                v.Enabled = false 
+            end
+        end
+    end)
+
+    -- 4️⃣ واجهة عرض الفريمات والبنغ (Info UI)
+    pcall(function()
+        local LP = game:GetService("Players").LocalPlayer
+        if LP:WaitForChild("PlayerGui"):FindFirstChild("AFKInfoUI") then 
+            LP.PlayerGui.AFKInfoUI:Destroy() 
+        end
+
+        local sg = Instance.new("ScreenGui", LP.PlayerGui)
+        sg.Name = "AFKInfoUI"
+        local frame = Instance.new("Frame", sg)
+        frame.Size = UDim2.new(0, 210, 0, 95)
+        frame.Position = UDim2.new(0, 10, 0, 10)
+        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        frame.BackgroundTransparency = 0.2
+        frame.BorderSizePixel = 0
+
+        local txt = Instance.new("TextLabel", frame)
+        txt.Size = UDim2.new(1, -10, 1, -10)
+        txt.Position = UDim2.new(0, 5, 0, 5)
+        txt.BackgroundTransparency = 1
+        txt.TextColor3 = Color3.fromRGB(0, 255, 150)
+        txt.TextSize = 13
+        txt.Font = Enum.Font.SourceSansBold
+        txt.TextXAlignment = Enum.TextXAlignment.Left
+
+        game:GetService("RunService").RenderStepped:Connect(function(dt)
+            local fps = math.floor(1 / dt)
+            local ping = 0
+            pcall(function() 
+                ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) 
+            end)
+            txt.Text = string.format("⚡ FPS: %d\n📶 Ping: %d ms\n🛡️ Custom Script: Active\n🕊️ Fly Mode: Enabled\n🔄 Rejoin: Continuous (1s)", fps, ping)
+        end)
+    end)
+
+    -- 5️⃣ نظام إعادة الاتصال المستمر (محاولة كل ثانية عند فصل النت)
+    local reconnecting = false
+    game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+        if reconnecting then return end
+        reconnecting = true
+        task.spawn(function()
+            while true do
+                task.wait(1)
+                pcall(function()
+                    local TS = game:GetService("TeleportService")
+                    local LP = game:GetService("Players").LocalPlayer
+                    if VIP_SERVER_CODE ~= "" then
+                        TS:TeleportToPrivateServer(game.PlaceId, VIP_SERVER_CODE, {LP})
+                    else
+                        TS:Teleport(game.PlaceId, LP)
+                    end
+                end)
+            end
+        end)
+    end)
+]]
+
+-- حفظ السكربت للتنقلات القادمة وتنفيذه فوراً
+local q = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport) or queueonteleport
+if q then pcall(function() q(mainCode) end) end
+assert(loadstring(mainCode))()
