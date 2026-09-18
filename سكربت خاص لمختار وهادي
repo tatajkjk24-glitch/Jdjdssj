@@ -1,0 +1,130 @@
+-- ============================================================
+-- 🛡️ HM ALLIANCE HUB | HADI & MUKHTAR ULTIMATE EDITION 🛡️
+-- ============================================================
+
+local mainCode = [[
+    repeat task.wait(1) until game:IsLoaded() and game.Players.LocalPlayer
+
+    -- ⚠️ ضع كود السيرفر الخاص هنا بين القوسين إن وجد (أو اتركه فارغاً للسيرفر العام)
+    local VIP_SERVER_CODE = "" 
+
+    print("========================================")
+    print("🔥 Executing Hadi & Mukhtar Custom Script...")
+    print("✅ Welcome Hadi & Mukhtar! System Active.")
+    print("========================================")
+
+    -- 1️⃣ تشغيل السكربت الخارجي المخصص (Anti-AFK, Anti-Kick, Logger)
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-AntiAFK-v-AntiKick-V3-v-Kick-Attempt-Logger-27977"))()
+        end)
+    end)
+
+    -- 2️⃣ تشغيل Infinity Yield وتفعيل الأوامر المحددة تلقائياً
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+            task.wait(2)
+            
+            -- الأوامر التي تفعل تلقائياً (تتوفر باقي الأوامر Freeze/View عبر القائمة)
+            local cmds = {"antiafk", "antikick", "antilag", "infzoom", "logs"}
+            if execCmd then
+                for _, cmd in ipairs(cmds) do
+                    pcall(function() execCmd(cmd) end)
+                    task.wait(0.3)
+                end
+            end
+        end)
+    end)
+
+    -- 3️⃣ تفعيل الزوم اللانهائي للكاميرا (Maxzoom Inf)
+    pcall(function()
+        local LP = game:GetService("Players").LocalPlayer
+        LP.CameraMaxZoomDistance = 9999999
+    end)
+
+    -- 4️⃣ تخفيف الجرافيكس واللاغ (Anti-Lag Optimization)
+    pcall(function()
+        game:GetService("Lighting").GlobalShadows = false
+        if setfpscap then setfpscap(30) end
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then 
+                v.Material = Enum.Material.Plastic 
+                v.Reflectance = 0
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then 
+                v.Enabled = false 
+            end
+        end
+    end)
+
+    -- 5️⃣ واجهة هادي ومختار لمراقبة الأداء (HM Info UI)
+    pcall(function()
+        local LP = game:GetService("Players").LocalPlayer
+        if LP:WaitForChild("PlayerGui"):FindFirstChild("HM_InfoUI") then 
+            LP.PlayerGui.HM_InfoUI:Destroy() 
+        end
+
+        local sg = Instance.new("ScreenGui", LP.PlayerGui)
+        sg.Name = "HM_InfoUI"
+        local frame = Instance.new("Frame", sg)
+        frame.Size = UDim2.new(0, 230, 0, 115)
+        frame.Position = UDim2.new(0, 10, 0, 10)
+        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        frame.BackgroundTransparency = 0.2
+        frame.BorderSizePixel = 0
+
+        local titleLabel = Instance.new("TextLabel", frame)
+        titleLabel.Size = UDim2.new(1, -10, 0, 20)
+        titleLabel.Position = UDim2.new(0, 5, 0, 5)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        titleLabel.TextSize = 13
+        titleLabel.Font = Enum.Font.SourceSansBold
+        titleLabel.Text = "🛡️ HM HUB | HADI & MUKHTAR"
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        local txt = Instance.new("TextLabel", frame)
+        txt.Size = UDim2.new(1, -10, 1, -30)
+        txt.Position = UDim2.new(0, 5, 0, 25)
+        txt.BackgroundTransparency = 1
+        txt.TextColor3 = Color3.fromRGB(0, 255, 150)
+        txt.TextSize = 12
+        txt.Font = Enum.Font.SourceSans
+        txt.TextXAlignment = Enum.TextXAlignment.Left
+
+        game:GetService("RunService").RenderStepped:Connect(function(dt)
+            local fps = math.floor(1 / dt)
+            local ping = 0
+            pcall(function() 
+                ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) 
+            end)
+            txt.Text = string.format("⚡ FPS: %d | Ping: %d ms\n🛡️ Anti-AFK & Kick: Active\n🔍 MaxZoom: Infinite\n📜 Commands: Freeze, View, Logs Ready\n🔄 Rejoin: 1s Infinite Loop", fps, ping)
+        end)
+    end)
+
+    -- 6️⃣ نظام إعادة الاتصال اللانهائي (محاولة كل 1 ثانية عند فصل النت)
+    local reconnecting = false
+    game:GetService("GuiService").ErrorMessageChanged:Connect(function()
+        if reconnecting then return end
+        reconnecting = true
+        task.spawn(function()
+            while true do
+                task.wait(1)
+                pcall(function()
+                    local TS = game:GetService("TeleportService")
+                    local LP = game:GetService("Players").LocalPlayer
+                    if VIP_SERVER_CODE ~= "" then
+                        TS:TeleportToPrivateServer(game.PlaceId, VIP_SERVER_CODE, {LP})
+                    else
+                        TS:Teleport(game.PlaceId, LP)
+                    end
+                end)
+            end
+        end)
+    end)
+]]
+
+-- حفظ الكود لذاكرة التناقل وتنفيذه فوراً
+local q = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport) or queueonteleport
+if q then pcall(function() q(mainCode) end) end
+assert(loadstring(mainCode))()
